@@ -1,3 +1,4 @@
+cat > new.sh << 'EOF'
 #!/bin/bash
 #
 # Skrip Instalasi Windows Otomatis untuk VPS/Server.
@@ -25,21 +26,19 @@ WEB_DIR="/tmp/install_progress"
 mkdir -p "$WEB_DIR"
 
 # --- Fungsi untuk Membuat Halaman HTML ---
-# Fungsi ini akan dipanggil berulang kali untuk memperbarui status
 generate_html() {
     local status_message="$1"
-    local progress_bar_width="$2" # Lebar progress bar (0-100)
-    local progress_text="$3" # Teks di dalam progress bar
+    local progress_bar_width="$2"
+    local progress_text="$3"
     local auto_refresh_content="<meta http-equiv='refresh' content='3'>"
 
-    # Hentikan auto-refresh jika sudah selesai atau gagal
     if [[ "$status_message" == *"Selesai"* || "$status_message" == *"Gagal"* ]]; then
         auto_refresh_content=""
     fi
 
-    cat > "$WEB_DIR/index.html" <<EOF
+    cat > "$WEB_DIR/index.html" <<EFO
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -73,15 +72,16 @@ generate_html() {
     </div>
 </body>
 </html>
-EOF
+EFO
 }
 
 # --- Interaksi dengan Pengguna ---
-# (Sama seperti skrip sebelumnya)
 echo "========================================="
 echo "   Skrip Instalasi Windows Otomatis"
 echo "========================================="
-for i in "${!os_names[@]}"; do printf "   %s) %s\n" "$((i+1))" "${os_names[$i]}"; done
+for i in "${!os_names[@]}"; do
+    printf "   %s) %s\n" "$((i+1))" "${os_names[$i]}"
+done
 echo "-----------------------------------------"
 read -p "Pilih OS yang ingin diinstal [1]: " PILIHOS; PILIHOS=${PILIHOS:-1}
 if [[ ! "$PILIHOS" =~ ^[0-9]+$ ]] || (( PILIHOS < 1 || PILIHOS > ${#os_names[@]} )); then echo "Pilihan tidak valid."; exit 1; fi
@@ -97,11 +97,10 @@ IP4=$(curl -4 -s icanhazip.com); GW=$(ip route | awk '/default/ { print $3 }')
 if [ -z "$IP4" ] || [ -z "$GW" ]; then echo "Gagal mendapatkan informasi jaringan."; exit 1; fi
 
 # --- Pembuatan Skrip Startup Windows (net.bat & dpart.bat) ---
-# (Logika ini tidak berubah)
-cat >/tmp/net.bat <<EOF
+cat >/tmp/net.bat <<EFO
 @ECHO OFF
-cd.>%windir%\GetAdmin
-if exist %windir%\GetAdmin (del /f /q "%windir%\GetAdmin") else (echo CreateObject^("Shell.Application"^).ShellExecute "%~s0", "%*", "", "runas", 1 >> "%temp%\Admin.vbs" & "%temp%\Admin.vbs" & del /f /q "%temp%\Admin.vbs" & exit /b 2)
+cd.>%windir%\\GetAdmin
+if exist %windir%\\GetAdmin (del /f /q "%windir%\\GetAdmin") else (echo CreateObject^("Shell.Application"^).ShellExecute "%~s0", "%*", "", "runas", 1 >> "%temp%\\Admin.vbs" & "%temp%\\Admin.vbs" & del /f /q "%temp%\\Admin.vbs" & exit /b 2)
 wmic useraccount where name='Administrator' call rename name='$NAMAADMIN'
 net user "$NAMAADMIN" "$PASSADMIN"
 for /f "tokens=3*" %%i in ('netsh interface show interface ^|findstr /I /R "Local.* Ethernet Ins*"') do (set InterfaceName=%%j)
@@ -109,16 +108,16 @@ netsh -c interface ip set address name=%InterfaceName% source=static address=$IP
 netsh -c interface ip add dnsservers name=%InterfaceName% address=8.8.8.8 index=1 validate=no
 netsh -c interface ip add dnsservers name=%InterfaceName% address=8.8.4.4 index=2 validate=no
 del /f /q "%~f0" & exit
-EOF
-cat >/tmp/dpart.bat <<EOF
+EFO
+cat >/tmp/dpart.bat <<EFO
 @ECHO OFF
-cd.>%windir%\GetAdmin
-if exist %windir%\GetAdmin (del /f /q "%windir%\GetAdmin") else (echo CreateObject^("Shell.Application"^).ShellExecute "%~s0", "%*", "", "runas", 1 >> "%temp%\Admin.vbs" & "%temp%\Admin.vbs" & del /f /q "%temp%\Admin.vbs" & exit /b 2)
-reg add "HKLM\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" /v PortNumber /t REG_DWORD /d $RDP_PORT /f
+cd.>%windir%\\GetAdmin
+if exist %windir%\\GetAdmin (del /f /q "%windir%\\GetAdmin") else (echo CreateObject^("Shell.Application"^).ShellExecute "%~s0", "%*", "", "runas", 1 >> "%temp%\\Admin.vbs" & "%temp%\\Admin.vbs" & del /f /q "%temp%\\Admin.vbs" & exit /b 2)
+reg add "HKLM\\System\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp" /v PortNumber /t REG_DWORD /d $RDP_PORT /f
 netsh advfirewall firewall add rule name="Open RDP Port $RDP_PORT" dir=in action=allow protocol=TCP localport=$RDP_PORT
-ECHO SELECT VOLUME=%%SystemDrive%% > "%SystemDrive%\diskpart.extend" & ECHO EXTEND >> "%SystemDrive%\diskpart.extend" & START /WAIT DISKPART /S "%SystemDrive%\diskpart.extend" & del /f /q "%SystemDrive%\diskpart.extend"
+ECHO SELECT VOLUME=%%SystemDrive%% > "%SystemDrive%\\diskpart.extend" & ECHO EXTEND >> "%SystemDrive%\\diskpart.extend" & START /WAIT DISKPART /S "%SystemDrive%\\diskpart.extend" & del /f /q "%SystemDrive%\\diskpart.extend"
 del /f /q "%~f0" & timeout 20 >nul & exit
-EOF
+EFO
 
 # --- Konfirmasi Akhir & Jalankan Web Server ---
 echo ""
@@ -140,26 +139,22 @@ generate_html "Memulai proses download..." "5" "Menunggu data..."
 # --- Proses Instalasi Inti dengan Progress Update ---
 echo "Memulai proses instalasi... Pantau progres di http://${IP4}/"
 
-# Membuat pipa untuk memproses output dd
-# Karena kita tidak tahu ukuran total, kita akan tampilkan data yang ditransfer sebagai progress
-# Ini adalah bagian paling kompleks
 (wget --no-check-certificate -qO- "$PILIH_URL" | gunzip | dd of=/dev/vda bs=4M) 2>&1 | \
 stdbuf -o0 tr '\r' '\n' | \
 while IFS= read -r line; do
     if [[ "$line" == *"bytes"* ]]; then
         bytes=$(echo "$line" | awk '{print $1}')
-        mb_copied=$(($bytes / 1024 / 1024))
+        mb_copied=$((bytes / 1024 / 1024))
         speed=$(echo "$line" | awk -F', ' '{print $3}')
-        # Kita tidak bisa membuat persenan akurat, jadi kita buat progress bar "bergerak" saja
-        # Contoh: progress bar akan penuh saat 50 GB tertulis (asumsi ukuran image)
-        progress_width=$(($mb_copied * 100 / 50000)) # Asumsi maks 50GB
+        # Asumsi ukuran image maks 50GB untuk visualisasi progress bar
+        progress_width=$((mb_copied * 100 / 50000)) 
         [ $progress_width -gt 100 ] && progress_width=100
         
         generate_html "Menulis image ke disk... (${speed})" "${progress_width}" "${mb_copied} MB"
     fi
 done
 
-# Cek hasil akhir
+# Cek hasil akhir proses dd
 if [ ${PIPESTATUS[2]} -eq 0 ]; then
     generate_html "✅ Selesai! Menyiapkan boot ke Windows..." "100" "Instalasi Berhasil"
     echo "Instalasi image berhasil. Menyisipkan skrip kustomisasi..."
@@ -181,3 +176,4 @@ sleep 10
 kill $WEBSERVER_PID
 rm -rf "$WEB_DIR"
 poweroff
+EOF
